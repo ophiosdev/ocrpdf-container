@@ -1,0 +1,3 @@
+dramatiq
+dramatiq-sqlite
+-e ./packages/smbmonitor
