@@ -1,0 +1,58 @@
+---
+minimum_pre_commit_version: 3.3.0
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: fix-byte-order-marker
+      - id: check-case-conflict
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: mixed-line-ending
+      - id: check-merge-conflict
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.20.0
+    hooks:
+      - id: markdownlint-cli2
+
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.43.3
+    hooks:
+      - id: typos
+
+  - repo: https://github.com/espressif/conventional-precommit-linter
+    rev: v1.11.0
+    hooks:
+      - id: conventional-precommit-linter
+        stages:
+          - commit-msg
+        args:
+          - --types=build,chore,ci,docs,feat,fix,perf,refactor,revert,style,test
+          - --subject-min-length=10
+          - --subject-max-length=128
+          - --body-max-line-length=1024
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+      - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.408
+    hooks:
+      - id: pyright
