@@ -1,0 +1,37 @@
+{
+  "include": [
+    "app",
+    "packages/smbmonitor/src"
+  ],
+
+  "exclude": [
+    "**/__pycache__",
+    ".venv"
+  ],
+
+  "ignore": [
+    "tests",
+    "packages/smbmonitor/tests"
+  ],
+
+  "extraPaths": [
+    "app",
+    "packages/smbmonitor/src"
+  ],
+
+  "reportMissingTypeStubs": false,
+  "reportPropertyTypeMismatch": "error",
+  "reportUnnecessaryTypeIgnoreComment": "error",
+  "verboseOutput": true,
+  "reportAssertAlwaysTrue": "error",
+  "reportDeprecated": "error",
+  "reportDuplicateImport": "error",
+  "reportUnusedExpression": "error",
+  "reportUnusedCallResult": "error",
+  "reportUnusedVariable": "error",
+  "reportUnsupportedDunderAll": "error",
+  "reportImplicitStringConcatenation": false,
+  "reportUninitializedInstanceVariable": "error",
+  "venvPath": ".",
+  "venv": ".venv"
+}
