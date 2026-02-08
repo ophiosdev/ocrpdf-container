@@ -1,0 +1,103 @@
+---
+name: Create Linked Tag from Upstream Repo
+
+on:
+  schedule:
+    # Runs once a day
+    - cron: '0 0 * * *'
+
+  # A simple manual trigger for testing.
+  workflow_dispatch:
+
+permissions:
+  # 'contents: write' is required to push tags to the repository.
+  contents: write
+
+jobs:
+  sync-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest stable release from public upstream repo
+        id: get_release_b
+        uses: ophiosdev/github-action-latest-release@master
+        with:
+          # Reads the UPSTREAM_REPO variable from your repository settings.
+          # This variable is REQUIRED for the workflow to function.
+          repository: ${{ vars.UPSTREAM_REPO }}
+          includes: ${{ vars.VERSION_REGEX || '^v?[0-9]+\.[0-9]+\.[0-9]+$' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate Release Tag Format
+        id: validate_tag
+        env:
+          VERSION_REGEX: ${{ vars.VERSION_REGEX || '^v?[0-9]+\.[0-9]+\.[0-9]+$' }}
+        run: |
+          TAG_NAME="${{ steps.get_release_b.outputs.release }}"
+
+          echo "Validating release tag format for latest release from upstream repository: $TAG_NAME"
+          if [[ -z "$TAG_NAME" ]]; then
+            echo "No valid release found from upstream repository. Exiting."
+            echo "is_valid=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$TAG_NAME" =~ $VERSION_REGEX ]]; then
+            echo "Tag '$TAG_NAME' matches the required format."
+            echo "is_valid=true" >> "$GITHUB_OUTPUT"
+            # Extract matched portion (Bash stores full match in BASH_REMATCH[0])
+            new_version="${BASH_REMATCH[0]}"
+            echo "Extracted version: $new_version"
+            echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag '$TAG_NAME' does not match the required format. Ignoring."
+            echo "is_valid=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.WORKFLOW_APP_ID }}
+          private-key: ${{ secrets.WORKFLOW_APP_PRIVATE_KEY }}
+
+      - name: Checkout repository code
+        # We need to check out the code to be able to check for existing tags and push new ones.
+        if: steps.validate_tag.outputs.is_valid == 'true'
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Check if tag already exists locally
+        id: check_tag
+        if: steps.validate_tag.outputs.is_valid == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.validate_tag.outputs.new_version }}
+        run: |
+          RELEASE_TAG="v${RELEASE_TAG#v}" # Ensure the tag starts with 'v'
+          if git tag --list | grep -q "^${RELEASE_TAG}$"; then
+            echo "Tag '$RELEASE_TAG' already exists. No action needed."
+            echo "create_tag=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New valid tag '$RELEASE_TAG' detected!"
+            echo "create_tag=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push new tag
+        id: create_and_push
+        # This step only runs if the tag is valid AND new.
+        if: steps.check_tag.outputs.create_tag == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.validate_tag.outputs.new_version }}
+        run: |
+          RELEASE_TAG="v${RELEASE_TAG#v}" # Ensure the tag starts with 'v'
+
+          echo "Creating tag: $RELEASE_TAG"
+          git tag "$RELEASE_TAG"
+
+          echo "Pushing tag to remote..."
+          git push origin "$RELEASE_TAG"
+
+          echo "Successfully created and pushed tag '$RELEASE_TAG'."
