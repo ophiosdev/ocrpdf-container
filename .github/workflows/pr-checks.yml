@@ -1,0 +1,33 @@
+---
+name: Pull Request validation
+
+on:
+  - pull_request
+
+env:
+  IMAGE_NAME: ophiosdev/ocrpdf
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+
+      - name: Run pre-commit checks
+        id: pre-commit
+        uses: cloudposse/github-action-pre-commit@v4.0.0
+
+      - name: Build Docker image if Dockerfile changed
+        run: |
+          if git diff --name-only origin/${{ github.base_ref }} | grep -q '^Dockerfile$'; then
+            echo "Dockerfile changed — building image..."
+            docker build -t "${IMAGE_NAME}:pr" .
+          else
+            echo "Dockerfile not changed — skipping build."
+          fi
