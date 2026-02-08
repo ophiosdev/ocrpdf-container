@@ -1,5 +1,5 @@
-ARG IMAGE_VERSION=latest
-FROM jbarlow83/ocrmypdf-alpine:${IMAGE_VERSION}
+ARG OCRMYPDF_IMAGE_VERSION=latest
+FROM jbarlow83/ocrmypdf-alpine:${OCRMYPDF_IMAGE_VERSION}
 
 # Default runtime configuration is defined in app/settings.py.
 
