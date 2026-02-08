@@ -61,4 +61,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            OCRMYPDF_IMAGE_VERSION=${{ steps.get_version.outputs.VERSION }}
+            OCRMYPDF_IMAGE_VERSION=v${{ steps.get_version.outputs.VERSION }}
