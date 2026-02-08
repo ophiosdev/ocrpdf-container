@@ -3,6 +3,8 @@ services:
   ocrpdf:
     image: ghcr.io/ophiosdev/ocrpdf:latest
     container_name: ocrpdf
+    network_mode: bridge
+    command: run
     environment:
       SMB_UNC_PATH: "${SMB_UNC_PATH}"
       SMB_USERNAME: "${SMB_USERNAME}"
