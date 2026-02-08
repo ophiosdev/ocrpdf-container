@@ -417,23 +417,23 @@ class LocalWorkDirManager(WorkDirManager):
         work_input = os.path.join(job_dir, ntpath.basename(job.file_path))
         work_output = os.path.join(job_dir, output_name)
 
-        if self._storage.exists(job.file_path):
-            s1 = self._storage.stat(job.file_path)
-            time.sleep(cfg.stability_seconds)
-            s2 = self._storage.stat(job.file_path)
-            if s1.size != s2.size or s1.mtime != s2.mtime:
-                raise RuntimeError("File not stable yet")
-            if s2.size == 0:
-                raise RuntimeError("Input file empty")
-            with (
-                self._storage.open(job.file_path, "rb") as src,
-                open(work_input, "wb") as dst,
-            ):
-                shutil.copyfileobj(src, dst)
-            if os.path.getsize(work_input) == 0:
-                raise RuntimeError("Input file empty after copy")
-        elif not os.path.exists(work_input):
-            raise RuntimeError("Input file not found")
+        if not self._storage.exists(job.file_path):
+            raise FileNotFoundError("Input file not found")
+
+        s1 = self._storage.stat(job.file_path)
+        time.sleep(cfg.stability_seconds)
+        s2 = self._storage.stat(job.file_path)
+        if s1.size != s2.size or s1.mtime != s2.mtime:
+            raise RuntimeError("File not stable yet")
+        if s2.size == 0:
+            raise RuntimeError("Input file empty")
+        with (
+            self._storage.open(job.file_path, "rb") as src,
+            open(work_input, "wb") as dst,
+        ):
+            shutil.copyfileobj(src, dst)
+        if os.path.getsize(work_input) == 0:
+            raise RuntimeError("Input file empty after copy")
 
         return work_input, work_output, output_path
 
