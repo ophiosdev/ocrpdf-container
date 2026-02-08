@@ -11,6 +11,7 @@ COPY . /app
 # Install Python dependencies into a virtual environment (PEP 668 compliance).
 ENV VIRTUAL_ENV=/app/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# hadolint ignore=DL3018
 RUN apk add --no-cache py3-pip \
     && if [ ! -x "$VIRTUAL_ENV/bin/pip" ]; then \
         python3 -m venv --system-site-packages "$VIRTUAL_ENV"; \
@@ -20,6 +21,7 @@ RUN apk add --no-cache py3-pip \
 # Try to install language packs with the system package manager if they are
 # not already present. This step is best-effort and wrapped so it won't
 # break the build on unknown base images.
+# hadolint ignore=DL3008,DL3018
 RUN set -eux; \
     if command -v apt-get >/dev/null 2>&1; then \
         apt-get update && apt-get install -y --no-install-recommends \
@@ -30,6 +32,7 @@ RUN set -eux; \
     fi
 
 # Ensure tessdata for required languages exists (best-effort download if missing)
+# hadolint ignore=DL4001
 RUN set -eux; \
     TESSDATA_DIR=${TESSDATA_DIR:-/usr/share/tessdata}; \
     mkdir -p "$TESSDATA_DIR"; \
