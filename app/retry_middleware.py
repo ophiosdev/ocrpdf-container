@@ -27,6 +27,23 @@ class PermanentError(Exception):
     """
 
 
+def _has_exception_type(
+    exc: BaseException | None, exc_type: type[BaseException]
+) -> bool:
+    """Return True if exc or any chained exception matches exc_type."""
+    seen: set[int] = set()
+    current = exc
+    while current is not None:
+        exc_id = id(current)
+        if exc_id in seen:
+            break
+        seen.add(exc_id)
+        if isinstance(current, exc_type):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _binary_backoff_fn(backoff_base: int) -> Callable[[int], int]:
     def backoff(attempt: int) -> int:
         try:
@@ -96,8 +113,14 @@ def configure_retries(broker, retry_max: int, backoff_base: int) -> None:
             kwargs["exclude"] = (PermanentError,)
         elif "retry_when" in params:
             # Some versions accept a callable to decide retryability.
-            def retry_when(exc: Exception) -> bool:
-                return not isinstance(exc, PermanentError)
+            # Dramatiq 2.x passes (attempt, exc); accept both shapes.
+            def retry_when(*args) -> bool:
+                exc = None
+                if len(args) == 1:
+                    exc = args[0]
+                elif len(args) >= 2:  # noqa: PLR2004
+                    exc = args[1]
+                return not _has_exception_type(exc, PermanentError)
 
             kwargs["retry_when"] = retry_when
     except Exception as exc:  # pragma: no cover - defensive
