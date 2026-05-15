@@ -65,7 +65,7 @@ class SmbMonitor:
                 raise TypeError(f"Handler {handler} is not callable")
 
             # Check if the handler is an async function
-            if not asyncio.iscoroutinefunction(handler):  # pyright: ignore[reportDeprecated]
+            if not asyncio.iscoroutinefunction(handler):
                 raise TypeError(f"Handler {handler} is not a coroutine function")
 
             # Inspect the handler's signature
@@ -100,8 +100,8 @@ class SmbMonitor:
         self._enforce_encryption = enforce_encryption
         self._server, self._share, self._watch_path = self._parse_unc_path(unc_path)
         self._stop_event = asyncio.Event()
-        self._watcher_task = None
-        self._consumer_task = None
+        self._watcher_task: asyncio.Task[None] | None = None
+        self._consumer_task: asyncio.Task[None] | None = None
         self._queue = asyncio.Queue()
         self._port = port
         self._uuid = uuid4()
@@ -271,17 +271,20 @@ class SmbMonitor:
         log.info("Stopping SMB monitoring")
         if graceful:
             self._stop_event.set()
-            _, pending = await asyncio.wait(
-                (self._watcher_task, self._consumer_task),  # pyright: ignore[reportArgumentType, reportCallIssue]
-                timeout=2.0,
-                return_when=asyncio.ALL_COMPLETED,
-            )
-            for task in pending:
-                task.cancel()
+            tasks = [self._watcher_task, self._consumer_task]
+            active_tasks = {t for t in tasks if t is not None}
+            if active_tasks:
+                _, pending = await asyncio.wait(
+                    active_tasks,
+                    timeout=2.0,
+                    return_when=asyncio.ALL_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
         else:
-            _ = self._watcher_task.cancel() if self._consumer_task else None
+            _ = self._watcher_task.cancel() if self._watcher_task else None
             _ = self._consumer_task.cancel() if self._consumer_task else None
 
     def is_running(self) -> bool:
         """Check if the monitoring tasks are currently running."""
-        return self._watcher_task and not self._watcher_task.done()  # pyright: ignore[reportReturnType]
+        return self._watcher_task is not None and not self._watcher_task.done()
