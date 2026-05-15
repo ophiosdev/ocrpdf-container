@@ -4,6 +4,9 @@ name: Pull Request validation
 on:
   - pull_request
 
+permissions:
+  contents: read
+
 env:
   IMAGE_NAME: ophiosdev/ocrpdf
 
@@ -17,7 +20,15 @@ jobs:
 
       - name: Set up Python
         id: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Create project venv and install dependencies
+        run: |
+          "${{ steps.setup-python.outputs.python-path }}" -m venv .venv
+          "$PWD/.venv/bin/python" -m pip install -r requirements.txt -r requirements-dev.txt
+           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run pre-commit checks
         id: pre-commit
