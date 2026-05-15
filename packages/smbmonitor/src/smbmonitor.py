@@ -65,7 +65,7 @@ class SmbMonitor:
                 raise TypeError(f"Handler {handler} is not callable")
 
             # Check if the handler is an async function
-            if not asyncio.iscoroutinefunction(handler):
+            if not asyncio.iscoroutinefunction(handler):  # pyright: ignore[reportDeprecated]
                 raise TypeError(f"Handler {handler} is not a coroutine function")
 
             # Inspect the handler's signature
