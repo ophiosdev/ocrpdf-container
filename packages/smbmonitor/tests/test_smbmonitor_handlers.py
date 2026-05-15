@@ -121,3 +121,68 @@ def test_use_gather_false_does_not_block_queue_join() -> None:
         await asyncio.wait_for(consumer_task, timeout=2.0)
 
     asyncio.run(_run())
+
+
+def test_stop_graceful_waits_for_active_tasks() -> None:
+    async def _run() -> None:
+        monitor = SmbMonitor(_unc_path(), [handler_full])
+        release = asyncio.Event()
+
+        async def _task() -> None:
+            await release.wait()
+
+        monitor._watcher_task = asyncio.create_task(_task())
+        monitor._consumer_task = asyncio.create_task(_task())
+
+        stop_task = asyncio.create_task(monitor.stop(graceful=True))
+        await asyncio.sleep(0)
+        assert not stop_task.done()
+        assert monitor._stop_event.is_set()
+
+        release.set()
+        await asyncio.wait_for(stop_task, timeout=1.0)
+        assert monitor._watcher_task.done()
+        assert monitor._consumer_task.done()
+
+    asyncio.run(_run())
+
+
+def test_stop_graceful_cancels_pending_tasks_after_timeout() -> None:
+    async def _run() -> None:
+        monitor = SmbMonitor(_unc_path(), [handler_full])
+        started = asyncio.Event()
+
+        async def _never_finishes() -> None:
+            started.set()
+            await asyncio.Future()
+
+        monitor._watcher_task = asyncio.create_task(_never_finishes())
+        await asyncio.wait_for(started.wait(), timeout=1.0)
+
+        await monitor.stop(graceful=True)
+
+        with pytest.raises(asyncio.CancelledError):
+            await monitor._watcher_task
+
+        assert monitor._watcher_task.cancelled()
+
+    asyncio.run(_run())
+
+
+def test_stop_graceful_handles_missing_consumer_task() -> None:
+    async def _run() -> None:
+        monitor = SmbMonitor(_unc_path(), [handler_full])
+        finished = asyncio.Event()
+
+        async def _task() -> None:
+            finished.set()
+
+        monitor._watcher_task = asyncio.create_task(_task())
+        monitor._consumer_task = None
+
+        await monitor.stop(graceful=True)
+
+        assert monitor._stop_event.is_set()
+        await asyncio.wait_for(finished.wait(), timeout=1.0)
+
+    asyncio.run(_run())
